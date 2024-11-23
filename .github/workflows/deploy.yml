@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # 当推送到 main 分支时触发
+      - main  # 仅当推送到 main 分支时触发工作流
 
 jobs:
   deploy:
@@ -13,14 +13,12 @@ jobs:
     # Step 1: 检出代码
     - name: Checkout code
       uses: actions/checkout@v3
-      with:
-        node-version: '20'  # 指定 Node.js 20
 
     # Step 2: 设置 Node.js 环境
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: '20'  # 明确使用 Node.js 20
+        node-version: '20'  # 正确使用 Node.js 20
 
     # Step 3: 安装依赖并构建
     - name: Install dependencies and build
@@ -32,18 +30,18 @@ jobs:
     - name: Deploy to EC2
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: 54.249.57.70              # EC2 实例公网 IP
-        username: ec2-user              # 默认用户名
+        host: 54.249.57.70              # EC2 实例的公网 IP
+        username: ec2-user              # EC2 默认用户名
         key: ${{ secrets.EC2_SSH_KEY }} # 存储在 GitHub Secrets 中的 SSH 私钥
-        source: "dist/*"                # 要上传的文件
+        source: "dist/*"                # 上传的文件源
         target: "/usr/share/nginx/html" # Nginx 的静态文件目录
 
     # Step 5: 登录 EC2 并重启 Nginx 服务
     - name: Restart Nginx
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: 54.249.57.70              # EC2 实例公网 IP
-        username: ec2-user              # 默认用户名
-        key: ${{ secrets.EC2_SSH_KEY }} # 存储在 GitHub Secrets 中的 SSH 私钥
+        host: 54.249.57.70
+        username: ec2-user
+        key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           sudo systemctl restart nginx
