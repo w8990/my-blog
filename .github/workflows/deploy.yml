@@ -13,12 +13,14 @@ jobs:
     # Step 1: 检出代码
     - name: Checkout code
       uses: actions/checkout@v3
+      with:
+        node-version: '20'  # 指定 Node.js 20
 
     # Step 2: 设置 Node.js 环境
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 16  # Vue 项目推荐使用 Node.js 版本
+        node-version: '20'  # 明确使用 Node.js 20
 
     # Step 3: 安装依赖并构建
     - name: Install dependencies and build
