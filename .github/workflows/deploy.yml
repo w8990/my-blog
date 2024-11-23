@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # 当代码推送到 main 分支时触发
+      - main  # 当推送到 main 分支时触发
 
 jobs:
   deploy:
@@ -18,7 +18,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v3
       with:
-        node-version: 16  # 使用适合 Vue 项目的 Node.js 版本
+        node-version: 16  # Vue 项目推荐使用 Node.js 版本
 
     # Step 3: 安装依赖并构建
     - name: Install dependencies and build
@@ -26,12 +26,22 @@ jobs:
         npm install
         npm run build
 
-    # Step 4: 部署到 EC2
+    # Step 4: 将构建结果上传到 EC2
     - name: Deploy to EC2
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: 54.249.57.70              # 替换为你的 EC2 公网 IP
-        username: ec2-user              # 替换为 EC2 的默认用户
-        key: ${{ secrets.EC2_SSH_KEY }} # SSH 私钥，需存储为 GitHub Secrets
-        source: "dist/*"                # 部署的文件源
-        target: "/usr/share/nginx/html" # 部署到服务器的路径
+        host: 54.249.57.70              # EC2 实例公网 IP
+        username: ec2-user              # 默认用户名
+        key: ${{ secrets.EC2_SSH_KEY }} # 存储在 GitHub Secrets 中的 SSH 私钥
+        source: "dist/*"                # 要上传的文件
+        target: "/usr/share/nginx/html" # Nginx 的静态文件目录
+
+    # Step 5: 登录 EC2 并重启 Nginx 服务
+    - name: Restart Nginx
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: 54.249.57.70              # EC2 实例公网 IP
+        username: ec2-user              # 默认用户名
+        key: ${{ secrets.EC2_SSH_KEY }} # 存储在 GitHub Secrets 中的 SSH 私钥
+        script: |
+          sudo systemctl restart nginx
