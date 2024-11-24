@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Enable manual trigger
+  workflow_dispatch:
 
 jobs:
   deploy:
@@ -18,43 +18,73 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: '20'
-          cache: 'npm'  # Enable npm caching
+          cache: 'npm'
       
       - name: Install dependencies
-        run: npm ci  # Uses package-lock.json for exact versions
+        run: npm ci
       
       - name: Build project
         run: npm run build
         env:
           CI: true
 
-      - name: Deploy to EC2
+      # 先将构建文件传输到服务器
+      - name: Copy build files to server
+        uses: appleboy/scp-action@v0.1.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "dist/*"
+          target: "/home/ec2-user/temp-deploy"
+          strip_components: 1
+
+      # 然后执行部署命令
+      - name: Execute deployment commands
         uses: appleboy/ssh-action@v0.1.5
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            # Create backup of current deployment
+            # 备份当前部署
             sudo tar -czf /tmp/backup-$(date +%Y%m%d_%H%M%S).tar.gz -C /usr/share/nginx/html .
             
-            # Clean target directory
+            # 确保目标目录存在并设置正确的权限
+            sudo mkdir -p /usr/share/nginx/html
+            
+            # 清理目标目录
             sudo rm -rf /usr/share/nginx/html/*
             
-            # First copy to a temporary location
-            sudo rm -rf /tmp/deploy
-            sudo mkdir -p /tmp/deploy
-            sudo cp -r ${{ github.workspace }}/dist/* /tmp/deploy/
+            # 移动新文件到 nginx 目录
+            cd /home/ec2-user/temp-deploy
+            sudo cp -r ./* /usr/share/nginx/html/
             
-            # Move files from dist directory to nginx root
-            sudo mv /tmp/deploy/* /usr/share/nginx/html/
-            
-            # Clean up temp directory
-            sudo rm -rf /tmp/deploy
-            
-            # Set proper permissions
+            # 设置正确的所有权和权限
+            sudo find /usr/share/nginx/html -type d -exec chmod 755 {} \;
+            sudo find /usr/share/nginx/html -type f -exec chmod 644 {} \;
             sudo chown -R nginx:nginx /usr/share/nginx/html
-            sudo chmod -R 755 /usr/share/nginx/html
             
-            # Test Nginx configuration
+            # 确保 nginx 用户有执行权限
+            sudo chmod 755 /usr/share/nginx/html
+            
+            # 清理临时目录
+            rm -rf /home/ec2-user/temp-deploy
+            
+            # 检查 SELinux 上下文（如果启用了 SELinux）
+            if command -v sestatus >/dev/null 2>&1; then
+              if sestatus | grep "SELinux status" | grep -q "enabled"; then
+                sudo semanage fcontext -a -t httpd_sys_content_t "/usr/share/nginx/html(/.*)?"
+                sudo restorecon -Rv /usr/share/nginx/html
+              fi
+            fi
+            
+            # 显示权限以供检查
+            ls -la /usr/share/nginx/html
+            
+            # 测试并重启 nginx
             sudo nginx -t && sudo systemctl restart nginx
+            
+            # 检查 nginx 日志中的错误
+            echo "Checking nginx error log..."
+            sudo tail -n 50 /var/log/nginx/error.log
