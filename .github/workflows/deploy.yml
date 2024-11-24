@@ -26,7 +26,7 @@ jobs:
         npm install
         npm run build
 
-    # Step 4: 清理旧文件
+    # Step 4: 清理旧文件并设置权限
     - name: Clean target directory
       uses: appleboy/ssh-action@v0.1.5
       with:
@@ -35,23 +35,10 @@ jobs:
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
           sudo rm -rf /usr/share/nginx/html/*
+          sudo mkdir -p /usr/share/nginx/html
+          sudo chown ec2-user:nginx /usr/share/nginx/html
+          sudo chmod 775 /usr/share/nginx/html
 
     # Step 5: 上传新文件
     - name: Deploy to EC2
-      uses: appleboy/scp-action@v0.1.5
-      with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "dist/*"
-        target: "/usr/share/nginx/html"
-
-    # Step 6: 重启 Nginx
-    - name: Restart Nginx
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          sudo systemctl restart nginx
+     
