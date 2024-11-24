@@ -30,7 +30,7 @@ jobs:
     - name: Clean target directory
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: <你的服务器IP>
+        host: 54.249.57.70
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
@@ -43,7 +43,7 @@ jobs:
     - name: Deploy dist folder contents to EC2
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: <你的服务器IP>
+        host: 54.249.57.70
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         source: "dist/*"
@@ -54,7 +54,7 @@ jobs:
     - name: Set ownership and restart Nginx
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: <你的服务器IP>
+        host: 54.249.57.70
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
