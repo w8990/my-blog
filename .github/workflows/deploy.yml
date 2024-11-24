@@ -4,60 +4,57 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:  # Enable manual trigger
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+    
     steps:
-    # Step 1: 检出代码
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    # Step 2: 设置 Node.js 环境
-    - name: Set up Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '20'
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+          cache: 'npm'  # Enable npm caching
+      
+      - name: Install dependencies
+        run: npm ci  # Uses package-lock.json for exact versions
+      
+      - name: Build project
+        run: npm run build
+        env:
+          CI: true
 
-    # Step 3: 安装依赖并构建项目
-    - name: Install dependencies and build
-      run: |
-        npm install
-        npm run build
-
-    # Step 4: 清理目标目录
-    - name: Clean target directory
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          sudo rm -rf /usr/share/nginx/html/*
-          sudo mkdir -p /usr/share/nginx/html
-          sudo chown ec2-user:nginx /usr/share/nginx/html
-          sudo chmod 775 /usr/share/nginx/html
-
-    # Step 5: 上传文件
-    - name: Deploy dist folder contents to EC2
-      uses: appleboy/scp-action@v0.1.5
-      with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        source: "dist/*"
-        target: "/usr/share/nginx/html"
-        debug: true
-
-    # Step 6: 修改权限并重启 Nginx
-    - name: Set ownership and restart Nginx
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          sudo chown -R nginx:nginx /usr/share/nginx/html
-          sudo chmod -R 755 /usr/share/nginx/html
-          sudo systemctl restart nginx
+      - name: Deploy to EC2
+        uses: appleboy/ssh-action@v0.1.5
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            # Create backup of current deployment
+            sudo tar -czf /tmp/backup-$(date +%Y%m%d_%H%M%S).tar.gz -C /usr/share/nginx/html .
+            
+            # Clean target directory
+            sudo rm -rf /usr/share/nginx/html/*
+            
+            # First copy to a temporary location
+            sudo rm -rf /tmp/deploy
+            sudo mkdir -p /tmp/deploy
+            sudo cp -r ${{ github.workspace }}/dist/* /tmp/deploy/
+            
+            # Move files from dist directory to nginx root
+            sudo mv /tmp/deploy/* /usr/share/nginx/html/
+            
+            # Clean up temp directory
+            sudo rm -rf /tmp/deploy
+            
+            # Set proper permissions
+            sudo chown -R nginx:nginx /usr/share/nginx/html
+            sudo chmod -R 755 /usr/share/nginx/html
+            
+            # Test Nginx configuration
+            sudo nginx -t && sudo systemctl restart nginx
