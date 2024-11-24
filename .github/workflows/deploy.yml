@@ -3,7 +3,7 @@ name: Deploy to EC2
 on:
   push:
     branches:
-      - main  # 推送到 main 分支触发
+      - main
 
 jobs:
   deploy:
@@ -26,11 +26,11 @@ jobs:
         npm install
         npm run build
 
-    # Step 4: 清理旧文件并设置权限
+    # Step 4: 清理目标目录
     - name: Clean target directory
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: 54.249.57.70
+        host: <你的服务器IP>
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
@@ -39,33 +39,22 @@ jobs:
           sudo chown ec2-user:nginx /usr/share/nginx/html
           sudo chmod 775 /usr/share/nginx/html
 
-    # Step 5: 上传 dist 文件夹到 /usr/share/nginx/html
-    - name: Deploy dist folder to EC2
+    # Step 5: 上传文件
+    - name: Deploy dist folder contents to EC2
       uses: appleboy/scp-action@v0.1.5
       with:
-        host: 54.249.57.70
+        host: <你的服务器IP>
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         source: "dist/*"
-        target: "/usr/share/nginx/html/dist"
+        target: "/usr/share/nginx/html"
         debug: true
 
-    # Step 6: 移动 dist 文件夹内容到根目录
-    - name: Move dist contents to root directory
+    # Step 6: 修改权限并重启 Nginx
+    - name: Set ownership and restart Nginx
       uses: appleboy/ssh-action@v0.1.5
       with:
-        host: 54.249.57.70
-        username: ec2-user
-        key: ${{ secrets.EC2_SSH_KEY }}
-        script: |
-          sudo mv /usr/share/nginx/html/dist/* /usr/share/nginx/html/
-          sudo rm -rf /usr/share/nginx/html/dist
-
-    # Step 7: 恢复所有权并重启 Nginx
-    - name: Restore ownership and restart Nginx
-      uses: appleboy/ssh-action@v0.1.5
-      with:
-        host: 54.249.57.70
+        host: <你的服务器IP>
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
         script: |
