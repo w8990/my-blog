@@ -39,18 +39,29 @@ jobs:
           sudo chown ec2-user:nginx /usr/share/nginx/html
           sudo chmod 775 /usr/share/nginx/html
 
-    # Step 5: 上传 dist 文件夹内容到 /usr/share/nginx/html 根目录
-    - name: Deploy to EC2
+    # Step 5: 上传 dist 文件夹到 /usr/share/nginx/html
+    - name: Deploy dist folder to EC2
       uses: appleboy/scp-action@v0.1.5
       with:
         host: 54.249.57.70
         username: ec2-user
         key: ${{ secrets.EC2_SSH_KEY }}
-        source: "dist/*"  # 展开 dist 文件夹中的内容
-        target: "/usr/share/nginx/html"
+        source: "dist/*"
+        target: "/usr/share/nginx/html/dist"
         debug: true
 
-    # Step 6: 恢复所有权并重启 Nginx
+    # Step 6: 移动 dist 文件夹内容到根目录
+    - name: Move dist contents to root directory
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: 54.249.57.70
+        username: ec2-user
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          sudo mv /usr/share/nginx/html/dist/* /usr/share/nginx/html/
+          sudo rm -rf /usr/share/nginx/html/dist
+
+    # Step 7: 恢复所有权并重启 Nginx
     - name: Restore ownership and restart Nginx
       uses: appleboy/ssh-action@v0.1.5
       with:
