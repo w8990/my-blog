@@ -45,4 +45,19 @@ jobs:
       with:
         host: 54.249.57.70
         username: ec2-user
-        key: ${{ secrets.EC2_SSH_K
+        key: ${{ secrets.EC2_SSH_KEY }}
+        source: "dist/*"
+        target: "/usr/share/nginx/html"
+        debug: true
+
+    # Step 6: 重启 Nginx并检查状态
+    - name: Restart and check Nginx
+      uses: appleboy/ssh-action@v0.1.5
+      with:
+        host: 54.249.57.70
+        username: ec2-user
+        key: ${{ secrets.EC2_SSH_KEY }}
+        script: |
+          sudo systemctl restart nginx
+          sudo systemctl status nginx
+          sudo tail -n 20 /var/log/nginx/error.log
