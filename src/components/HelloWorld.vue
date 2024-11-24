@@ -4,7 +4,7 @@
     <p>
 
     </p>
-    <h3>amazon test2</h3>
+    <h3>amazon wht</h3>
 
   </div>
 </template>
