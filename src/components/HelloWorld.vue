@@ -32,7 +32,7 @@ export default {
         console.log('用户名:', this.username);
         console.log('密码:', this.password);
         // 可以添加成功处理或者错误处理逻辑
-        alert('登录成功');
+        alert('登录成功111');
       } else {
         alert('请填写完整的用户名和密码');
       }
